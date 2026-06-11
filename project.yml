@@ -15,10 +15,17 @@ targets:
     platform: iOS
     sources:
       - Scratch
+    dependencies:
+      - target: ScratchWidgets
+    info:
+      path: Scratch/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: com.schwim23.scratch
+            CFBundleURLSchemes: [scratch]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.schwim23.scratch
-        GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Scratch records audio so you can capture voice notes."
@@ -29,6 +36,24 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: scratch
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.0"
+  ScratchWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - ScratchWidgets
+      - Scratch/Intents/StartRecordingIntent.swift
+      - Scratch/Intents/CaptureRouter.swift
+    info:
+      path: ScratchWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.schwim23.scratch.widgets
+        INFOPLIST_KEY_CFBundleDisplayName: Scratch
+        SKIP_INSTALL: YES
   ScratchTests:
     type: bundle.unit-test
     platform: iOS

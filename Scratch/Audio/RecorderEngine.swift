@@ -58,6 +58,12 @@ final class RecorderEngine {
 
     var isActive: Bool { state == .recording || state == .paused }
 
+    /// Seconds of silence after which the take auto-finalizes; nil disables.
+    /// Set before start(). Fires `onAutoStop` on the main queue, once.
+    var silenceAutoStop: TimeInterval?
+    var onAutoStop: (() -> Void)?
+    private var silenceGate: SilenceGate?
+
     @MainActor
     func start() async {
         guard state == .idle else { return }
@@ -131,6 +137,7 @@ final class RecorderEngine {
         partialTranscript = ""
         partialTimings = []
         sawFinalResult = false
+        silenceGate = silenceAutoStop.map { SilenceGate(window: $0) }
         isWriting = true
 
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
@@ -166,6 +173,9 @@ final class RecorderEngine {
                 self.liveLevels.removeFirst(self.liveLevels.count - Self.liveLevelCount)
             }
             self.elapsed = seconds
+            if self.silenceGate?.register(level: level, transcriptChanged: false, at: seconds) == true {
+                self.onAutoStop?()
+            }
         }
     }
 
@@ -205,6 +215,9 @@ final class RecorderEngine {
             } else {
                 partialTranscript = text
                 partialTimings = timings
+            }
+            if liveTranscript != combinedTranscript {
+                _ = silenceGate?.register(level: 0, transcriptChanged: true, at: elapsed)
             }
             liveTranscript = combinedTranscript
         }

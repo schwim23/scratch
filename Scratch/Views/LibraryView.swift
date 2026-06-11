@@ -13,6 +13,8 @@ struct LibraryView: View {
     #else
     @State private var isRecording = false
     #endif
+    @State private var showSettings = false
+    @State private var router = CaptureRouter.shared
 
     private var filtered: [Note] {
         notes.filter { $0.matches(searchText) }
@@ -35,6 +37,15 @@ struct LibraryView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(Palette.offWhite)
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(Palette.dimmed)
+                    }
+                    .accessibilityLabel("Settings")
+                }
             }
             .searchable(text: $searchText, prompt: "Search notes")
             .safeAreaInset(edge: .bottom) {
@@ -45,6 +56,26 @@ struct LibraryView: View {
         }
         .fullScreenCover(isPresented: $isRecording) {
             RecordingFlowView()
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .onOpenURL { url in
+            if url.scheme == "scratch", url.host() == "record" {
+                isRecording = true
+            }
+        }
+        .onChange(of: router.pendingCapture) { _, pending in
+            if pending {
+                router.pendingCapture = false
+                isRecording = true
+            }
+        }
+        .onAppear {
+            if router.pendingCapture {
+                router.pendingCapture = false
+                isRecording = true
+            }
         }
     }
 

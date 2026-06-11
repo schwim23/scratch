@@ -10,6 +10,8 @@ struct RecordingFlowView: View {
 
     @State private var recorder = RecorderEngine()
     @State private var result: RecordingResult?
+    @AppStorage(SettingsKeys.autoStopEnabled) private var autoStopEnabled = true
+    @AppStorage(SettingsKeys.autoStopSeconds) private var autoStopSeconds = 4.0
     var autoStart = true
 
     var body: some View {
@@ -25,20 +27,17 @@ struct RecordingFlowView: View {
                     onDiscard: {
                         AudioStore.delete(result.audioFileName)
                         dismiss()
+                    },
+                    onRedo: {
+                        AudioStore.delete(result.audioFileName)
+                        recorder = RecorderEngine()
+                        self.result = nil
                     }
                 )
             } else {
                 RecordingView(
                     recorder: recorder,
-                    onStop: {
-                        Task {
-                            if let r = await recorder.stop(), r.duration > 0.2 {
-                                result = r
-                            } else {
-                                dismiss()
-                            }
-                        }
-                    },
+                    onStop: { finishTake() },
                     onCancel: {
                         Task {
                             await recorder.abandon()
@@ -47,21 +46,34 @@ struct RecordingFlowView: View {
                     }
                 )
                 .task {
-                    if autoStart { await recorder.start() }
+                    if autoStart {
+                        recorder.silenceAutoStop = autoStopEnabled ? autoStopSeconds : nil
+                        recorder.onAutoStop = { finishTake() }
+                        await recorder.start()
+                    }
                     #if DEBUG
                     // SCRATCH_AUTOSTOP=<seconds> ends the take automatically
                     // so the flow can be exercised headlessly in CI/simulator.
                     if let seconds = ProcessInfo.processInfo.environment["SCRATCH_AUTOSTOP"].flatMap(Double.init) {
                         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                        if recorder.isActive, let r = await recorder.stop() {
-                            result = r
-                        }
+                        finishTake()
                     }
                     #endif
                 }
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private func finishTake() {
+        Task {
+            guard recorder.isActive else { return }
+            if let r = await recorder.stop(), r.duration > 0.2 {
+                result = r
+            } else {
+                dismiss()
+            }
+        }
     }
 
     private func save(result: RecordingResult, title: String, transcript: String, timings: [WordTiming]) {

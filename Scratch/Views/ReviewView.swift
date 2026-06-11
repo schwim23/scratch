@@ -7,6 +7,7 @@ struct ReviewView: View {
     let takeNumber: Int
     let onSave: (_ title: String, _ transcript: String, _ timings: [WordTiming]) -> Void
     let onDiscard: () -> Void
+    let onRedo: () -> Void
 
     @State private var title = ""
     @State private var transcript = ""
@@ -109,6 +110,12 @@ struct ReviewView: View {
                 .font(.mono(13, weight: .bold))
                 .foregroundStyle(Palette.amber)
             Spacer()
+            Button(action: onRedo) {
+                Label("Redo", systemImage: "arrow.counterclockwise")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundStyle(Palette.amber)
+            .accessibilityHint("Discard this take and immediately start a new one")
         }
         .padding(.horizontal, 20)
     }
