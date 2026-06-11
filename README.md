@@ -11,13 +11,17 @@ Scratch is a voice note app for iPhone. Hit the big amber button, talk, and watc
 ## Features
 
 - **One-tap capture** — launch → recording is a single tap
+- **Quick capture from anywhere** — bind the iPhone **Action button** (Settings → Action Button → Shortcut → "New Take"), say *"New take in Scratch"* to Siri, add the Lock Screen widget or the iOS 18 Control Center control, or hit `scratch://record`
 - **Live transcription** while you speak (Apple Speech, on-device when available, with word timings)
-- **Pause/resume** mid-take
+- **Silence auto-stop** — stop talking and the take wraps itself up and goes to review (configurable 2–10s, default 4s, with a longer grace period before your first words)
+- **Pause/resume** mid-take, and **instant redo** from review when you stumble and just want to go again
 - **Review before save** — edit the transcript, auto-generated titles from your first words
 - **Word-synced playback** — the transcript highlights word-by-word as audio plays; tap any word to jump there
 - **Library with full-text search** across all transcripts, waveform thumbnails per note
 - **Share as text, audio, or both** via the standard iOS share sheet (Mail, Messages, AirDrop, …)
 - Local SwiftData storage; schema is CloudKit-compatible for a future iCloud sync flip
+
+Roadmap lives in [BACKLOG.md](BACKLOG.md) — next up is the AI layer (LLM post-processing, transcript cleanup, semantic search), then an App Store release.
 
 ## Building
 
@@ -50,10 +54,12 @@ First recording: iOS will ask for microphone and speech-recognition permissions,
 
 ## Architecture
 
-- **SwiftUI, iOS 17+**, SwiftData persistence (`Note` model, all-default properties, CloudKit-ready)
+- **SwiftUI, iOS 17+** (widgets 18+), SwiftData persistence (`Note` model, all-default properties, CloudKit-ready)
 - `RecorderEngine` — one `AVAudioEngine` mic tap feeding an `.m4a` writer and `SFSpeechRecognizer` simultaneously; finalized utterances accumulate so silence boundaries don't drop text
+- `SilenceGate` — pure, unit-tested rule for when a quiet take auto-finalizes, fed by mic levels and transcript activity
 - `PlaybackEngine` — `AVAudioPlayer` + 20 Hz clock for transcript sync and scrubbing
 - `TranscriptSync` — falls back to proportional word spread when the recognizer's timings are unusable (all-zero timestamps, edited text)
+- `ScratchWidgets` extension — Lock Screen widget + Control Center control; `StartRecordingIntent` (App Intents) is shared between targets and routes into recording via `CaptureRouter`
 - Icon is generated: `swift Scripts/render_icon.swift <out.png>`
 
 ### Debug harness
